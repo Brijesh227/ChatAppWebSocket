@@ -1,18 +1,26 @@
 import React, { useEffect, useState } from 'react'
 import useWebSocket from 'react-use-websocket';
 import { useSelector, useDispatch } from 'react-redux';
-import { messagesSlice } from '../../../redux/message/messageSlice';
-import './MessageList.css';
+import { fetchMessages } from '../../../redux/message/messageSlice';
 
-function MessageList() {
+function MessageList({ userName, groupName, setGroupName, setUsername }) {
+  const [currentMsg, setCurrentMsg] = useState('');
 
   const messageList = useSelector((state) => {
-    console.log(state);
-    return state.entities
+    return state.message.entities
   })
+
   const dispatch = useDispatch()
 
-  const { sendMessage, readyState, getWebSocket } = useWebSocket('ws://localhost:8000', {
+  useEffect(() => {
+    dispatch(fetchMessages())
+    return () => {
+      setGroupName("");
+      setUsername("")
+    }
+  }, [dispatch])
+
+  const { sendMessage } = useWebSocket('ws://localhost:8000', {
     onOpen: () => {
       console.log('WebSocket connection established.');
     },
@@ -21,35 +29,29 @@ function MessageList() {
     }
   });
 
-  // let sendMessageToWs = () => {
-  //   let msg = {
-  //     user: "brij",
-  //     group: "it",
-  //     content: currentMsg
-  //   }
-  // }
+  const handleClick = () => {
+    let message = {
+      messageText: currentMsg,
+      userName: userName,
+      groupName: groupName
+    }
+    sendMessage(JSON.stringify(message))
+  }
 
   return (
-    <div className='center'>
+    <div>
       <div>MessageList</div>
-      <div className='chatbox'>
-      {/* {
-        messageList.map((message, index) => {
-          return (
+      <div>
+        {messageList && messageList.map((message, index) => {
           <div key={index}>
-            <span>User: {message.user}</span>
-            <span>Group: {message.group}</span>
-            <span>Message: {message.content}</span>
+            {message.messageText}
           </div>
-          )
-        })
-      } */}
-      {messageList}
+        })}
       </div>
-      {/* <div>
-        <input onChange={(event) => {setCurrentMsg(event.target.value)}} />
-        <button onClick={sendMessage}>Send</button>
-      </div> */}
+      {userName && groupName && <div>
+        <input type='textarea' value={currentMsg} onChange={(event) => { setCurrentMsg(event.target.value) }} />
+        <button onClick={handleClick}>Send</button>
+      </div>}
     </div>
   )
 }
