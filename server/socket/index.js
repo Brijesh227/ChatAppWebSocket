@@ -1,31 +1,56 @@
-const ws = require('ws');
+require('dotenv').config()
 const { createMessage } = require('../controllers/message');
+const express = require('express');
+const http = require('http');
+const socketio = require('socket.io');
+
+const app = express();
+const server = http.createServer(app);
+const io = socketio(server);
+const PORT = process.env.PORT || 3000;
+const activeUserList = [];
 
 exports.socketConnection = async function (server) {
   try {
-    const wsServer = new ws.Server({ noServer: true });
-    wsServer.on('connection', socket => {
-      socket.on('error', error => {
-        console.log("error",error);
-      });
+    io.on('connection', socket => {
+      socket.on('joinRoom', ({ userName, groupName }) => {
+        const user = {
+          id: socket.id,
+          userName: userName,
+          groupName: groupName
+        };
+        activeUserList.push(user);
 
-      socket.on('message', async (message) => {
-        const messageObject = JSON.parse(message.toString());
-        console.log("received message",messageObject)
-        await createMessage(messageObject);
-        wsServer.clients.forEach(client => {
-          if(client.readyState === WebSocket.OPEN && messageObject.groupName === client.groupName) {
-            client.send(message.toString())
-          }
-        })
+        socket.join(user.groupName);
+    
+        io.to(user.groupName).emit('roomUsers', {
+          room: user.groupName,
+          users: activeUserList.filter(activeUser => activeUser.groupName === user.groupName)
+        });
+      });
+    
+      socket.on('chatMessage', msg => {
+        const user = getActiveUser(socket.id);
+    
+        io.to(user.room).emit('message', formatMessage(user.username, msg));
+      });
+    
+      socket.on('disconnect', () => {
+        const user = exitRoom(socket.id);
+    
+        if (user) {
+          io.to(user.room).emit('roomUsers', {
+            room: user.room,
+            users: getIndividualRoomUsers(user.room)
+          });
+        }
       });
     });
 
-    await server.on('upgrade', (request, socket, head) => {
-      wsServer.handleUpgrade(request, socket, head, socket => {
-        wsServer.emit('connection', socket, request);
-      });
+    server.listen(PORT, () => {
+      console.log(`Server running on ${PORT}`)
     });
+
   } catch(error) {
     console.log("error from server",error)
   }
