@@ -7,8 +7,8 @@ const initialState = {
   err: ''
 }
 
-export const fetchMessages = createAsyncThunk('messages/fetchMessages', async () => { //groupId
-  const response = await axios.get('https://jsonplaceholder.typicode.com/photos') //http://localhost:3000/api/message?groupId=${groupId} 
+export const fetchMessages = createAsyncThunk('messages/fetchMessages', async (groupName) => {
+  const response = await axios.get(`http://localhost:8000/api/message?groupName=${groupName}`)
   return response.data;
 })
 

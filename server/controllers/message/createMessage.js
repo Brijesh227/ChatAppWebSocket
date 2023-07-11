@@ -1,4 +1,4 @@
-const Message = require('../model/messageschema');
+const Message = require('../../model/messageschema');
 
 exports.createMessage = async function (message) {
   const { groupName, messageText, userName } = message;

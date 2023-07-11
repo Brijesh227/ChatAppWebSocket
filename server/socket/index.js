@@ -1,19 +1,11 @@
-require('dotenv').config()
-const { createMessage } = require('../controllers/message');
-const express = require('express');
-const http = require('http');
-const socketio = require('socket.io');
-
-const app = express();
-const server = http.createServer(app);
-const io = socketio(server);
-const PORT = process.env.PORT || 3000;
+const { createMessage } = require('../controllers');
 const activeUserList = [];
 
-exports.socketConnection = async function (server) {
+exports.socketConnection = async function (io) {
   try {
     io.on('connection', socket => {
-      socket.on('joinRoom', ({ userName, groupName }) => {
+      socket.on('join', ({ userName, groupName }) => {
+        console.log("connection established!");
         const user = {
           id: socket.id,
           userName: userName,
@@ -22,36 +14,25 @@ exports.socketConnection = async function (server) {
         activeUserList.push(user);
 
         socket.join(user.groupName);
-    
-        io.to(user.groupName).emit('roomUsers', {
-          room: user.groupName,
-          users: activeUserList.filter(activeUser => activeUser.groupName === user.groupName)
+        socket.on("sendMessage", async ({ message }) => {
+          const messageObject = JSON.parse(message);
+          await createMessage(messageObject);
+          io.to(user.groupName).emit("message", {
+            user: user.userName,
+            text: messageObject.messageText,
+          });
         });
       });
-    
-      socket.on('chatMessage', msg => {
-        const user = getActiveUser(socket.id);
-    
-        io.to(user.room).emit('message', formatMessage(user.username, msg));
-      });
-    
+
       socket.on('disconnect', () => {
-        const user = exitRoom(socket.id);
-    
-        if (user) {
-          io.to(user.room).emit('roomUsers', {
-            room: user.room,
-            users: getIndividualRoomUsers(user.room)
-          });
+        const index = activeUserList.findIndex((user) => user.id === socket.id);
+        if (index !== -1) {
+          activeUserList.splice(index, 1);
         }
+        console.log("connection closed from user!");
       });
     });
-
-    server.listen(PORT, () => {
-      console.log(`Server running on ${PORT}`)
-    });
-
-  } catch(error) {
-    console.log("error from server",error)
+  } catch (error) {
+    console.log("error from server", error)
   }
 }
