@@ -15,23 +15,21 @@ const port = process.env.PORT || 8000;
 const app = express();
 connectDb();
 app.use(cors())
-app.use("/api",messageRoute);
+app.use("/api", messageRoute);
 
 const server = http.createServer(app);
-const io = socketio(server,{
+const io = socketio(server, {
   cors: {
     origin: "http://localhost:3006",
-    methods: ["GET", "POST"],
-    allowedHeaders: ["my-custom-header"],
-    credentials: true,
+    methods: ["GET", "POST"]
   }
 });
 
 mongoose.connection.once('open', async () => {
   await socketConnection(io);
   server.listen(port, (err) => {
-      if (err) console.log(err);
-      console.log(`server listening on ${port}`);
+    if (err) console.log(err);
+    console.log(`server listening on ${port}`);
   });
 })
 

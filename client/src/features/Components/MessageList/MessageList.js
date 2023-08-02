@@ -21,7 +21,6 @@ function MessageList({ userName, groupName, setGroupName, setUsername }) {
 
   useEffect(() => {
     if (userName && groupName) {
-      console.log("trying to connect");
       server.emit("join", { userName, groupName }, (error) => {
         if (error) {
           console.log(error);
